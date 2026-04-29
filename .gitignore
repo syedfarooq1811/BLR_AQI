@@ -1,4 +1,10 @@
-.venv/
+node_modules/
 __pycache__/
-.DS_Store
 *.pyc
+mlruns/
+.env
+data/
+cache/
+uvicorn-*.log
+poetry.lock
+package-lock.json

@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Hyperlocal AI-powered AQI forecasting and health-aware routing intelligence for Bengaluru." />
+  <title>Bengaluru AQI Intelligence</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Inter:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" />
+
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- App styles -->
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+
+  <!-- Top loading bar -->
+  <div id="topbar"></div>
+
+  <!-- Map -->
+  <div id="map"></div>
+
+  <!-- ── Control Panel ── -->
+  <div class="control-panel glass">
+
+    <h2>Bengaluru AQI Intelligence</h2>
+    <p class="panel-subtitle">7-Day Forecast &nbsp;·&nbsp; Health-Aware Routing</p>
+
+    <div id="status" class="status">Initialising…</div>
+
+    <!-- Time selector -->
+    <label for="datetimeInput">Forecast Window</label>
+    <input type="datetime-local" id="datetimeInput" />
+
+    <!-- Tab bar -->
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="routingTab">Route</button>
+      <button class="tab-btn" data-tab="forecast24Tab">24 h</button>
+      <button class="tab-btn" data-tab="forecast7DTab">7-Day</button>
+      <button class="tab-btn" data-tab="compareTab">Compare</button>
+      <button class="tab-btn" data-tab="walletTab">Wallet</button>
+    </div>
+
+    <!-- ── Routing ── -->
+    <div class="tab-content active" id="routingTab">
+      <div class="route-panel">
+        <p class="hint">Enter an address or click the map to set origin and destination.</p>
+
+        <label for="originInput">Origin</label>
+        <div class="autocomplete-wrapper">
+          <input id="originInput" type="text" placeholder="Koramangala, Bengaluru" autocomplete="off" />
+          <ul id="originSuggestions" class="suggestions-list"></ul>
+        </div>
+
+        <label for="destinationInput">Destination(s)</label>
+        <div id="destinationsContainer">
+          <div class="autocomplete-wrapper dest-wrapper" style="margin-bottom:8px">
+            <input id="destinationInput" class="dest-input" type="text" placeholder="Indiranagar, Bengaluru" autocomplete="off" />
+            <ul id="destinationSuggestions" class="suggestions-list"></ul>
+          </div>
+        </div>
+        <button id="addStopBtn" class="secondary-btn" style="margin-bottom:12px;width:auto;padding:6px 12px;font-size:0.75rem">+ Add Stop</button>
+
+        <label for="profileSelect">Health Profile</label>
+        <select id="profileSelect">
+          <option value="healthy">Healthy Adult</option>
+          <option value="asthmatic">Asthmatic</option>
+          <option value="copd">COPD</option>
+          <option value="elderly">Elderly</option>
+          <option value="children">Children</option>
+        </select>
+
+        <label for="transportModeSelect">Mode of Transport</label>
+        <select id="transportModeSelect">
+          <option value="driving">Driving</option>
+          <option value="walking">Walking</option>
+          <option value="cycling">Cycling</option>
+        </select>
+
+        <button id="routeBtn">Find Optimal Routes</button>
+      </div>
+
+      <div id="routeSummary" class="route-summary" style="display:none;"></div>
+
+      <!-- XAI card -->
+      <div id="xaiInsight" class="route-summary" style="display:none; border-left-color: #8b7730;">
+        <strong>Attention Analysis</strong>
+        <p id="xaiText" style="margin: 6px 0 0; color: #5a6270; font-size: 0.8em; line-height: 1.6;"></p>
+        <button id="showAttentionBtn" class="secondary-btn">Visualise Graph Attention</button>
+      </div>
+    </div>
+
+    <!-- ── 24-h Forecast ── -->
+    <div class="tab-content" id="forecast24Tab">
+      <p class="hint">Select a street on the map for a 24-hour hourly AQI forecast.</p>
+      <div class="chart-container">
+        <canvas id="streetForecastChart24"></canvas>
+      </div>
+      <div id="forecastDetails24" class="route-summary" style="display:none;"></div>
+    </div>
+
+    <!-- ── 7-Day Forecast ── -->
+    <div class="tab-content" id="forecast7DTab">
+      <p class="hint">Select a street on the map for a 7-day daily-average AQI forecast.</p>
+      <div class="chart-container">
+        <canvas id="streetForecastChart7D"></canvas>
+      </div>
+      <div id="forecastDetails7D" class="route-summary" style="display:none;"></div>
+    </div>
+
+    <!-- ── Compare ── -->
+    <div class="tab-content" id="compareTab">
+      <p class="hint">Select up to three locations on the map to compare AQI forecasts.</p>
+      <button id="clearCompareBtn" class="secondary-btn">Clear Selection</button>
+      <div class="chart-container">
+        <canvas id="compareChart"></canvas>
+      </div>
+    </div>
+
+    <!-- ── Health Wallet ── -->
+    <div class="tab-content" id="walletTab">
+      <p class="hint">Your weekly exposure savings from choosing the Cleanest route over the Fastest route.</p>
+      <div id="walletSummary" style="padding:16px;background:rgba(61,122,92,0.15);border:1px solid rgba(61,122,92,0.3);border-radius:6px;text-align:center;margin-bottom:16px;">
+        <div style="font-size:0.75rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--gold-light);margin-bottom:6px">Total PM2.5 Avoided</div>
+        <div id="walletTotal" style="font-size:2rem;font-weight:600;color:var(--text-primary);">0 µg</div>
+      </div>
+      <div id="walletHistory" style="display:flex;flex-direction:column;gap:8px;"></div>
+    </div>
+
+    <!-- Legend -->
+    <p class="note">
+      <span class="note-good">Good</span>
+      <span class="note-mod">Moderate</span>
+      <span class="note-sev">Severe</span>
+    </p>
+
+  </div>
+
+  <script src="/static/script.js"></script>
+</body>
+</html>

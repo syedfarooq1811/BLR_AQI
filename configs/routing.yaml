@@ -1,0 +1,30 @@
+# Routing configuration
+routing:
+  alpha_time: 1.0
+  gamma_turn_penalty: 0.2
+  delta_uncertainty_risk: 0.5
+  base_speed_kmh: 30
+  cache_ttl_seconds: 3600
+  health_profiles:
+    healthy:
+      beta_aqi: 0.1
+      sensitivity: 1.0
+    asthmatic:
+      beta_aqi: 2.5
+      sensitivity: 3.0
+    copd:
+      beta_aqi: 3.0
+      sensitivity: 3.5
+    elderly:
+      beta_aqi: 0.6
+      sensitivity: 1.5
+    children:
+      beta_aqi: 0.7
+      sensitivity: 1.8
+  transport_modes:
+    walking:
+      met: 3.5
+    cycling:
+      met: 7.0
+    driving:
+      met: 1.5

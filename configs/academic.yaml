@@ -1,0 +1,14 @@
+# Academic styling & reporting config
+academic:
+  font_family: "Inter"
+  theme: "light"
+  show_equations: true
+  citations_format: "ieee"
+  metrics_reported:
+    - "RMSE"
+    - "CRPS"
+    - "PICP"
+  baselines_comparison:
+    - "STGCN"
+    - "DCRNN"
+    - "PatchTST"
