@@ -8,3 +8,8 @@ cache/
 uvicorn-*.log
 poetry.lock
 package-lock.json
+models/
+logs/
+.next/
+reports/
+scripts/
