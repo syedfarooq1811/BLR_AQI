@@ -1,0 +1,25 @@
+{
+  "dataset": {
+    "rows": 209270,
+    "stations": 12,
+    "start": "2024-01-01 05:00:00+05:30",
+    "end": "2026-01-01 05:00:00+05:30",
+    "temporal_cutoff": "2025-08-08 01:00:00+05:30"
+  },
+  "feature_sets": {
+    "full": "Lag, rolling, cyclical time, weekend, and station location features.",
+    "no_spatial": "Full model without latitude/longitude.",
+    "no_temporal": "Full model without cyclical time and weekend features.",
+    "aqi_lag_only": "Only AQI lag and rolling history."
+  },
+  "target_column": "AQI",
+  "target_units": "normalized AQI units from data/processed/features.parquet",
+  "model": {
+    "estimator": "sklearn.ensemble.HistGradientBoostingRegressor",
+    "max_iter": 40,
+    "learning_rate": 0.06,
+    "interval_method": "90% residual-calibrated interval on the final 20% of each training split",
+    "crps_method": "Gaussian CRPS using calibration residual standard deviation"
+  },
+  "elapsed_seconds": 41.616
+}

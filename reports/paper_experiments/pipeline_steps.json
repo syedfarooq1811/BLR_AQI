@@ -1,0 +1,29 @@
+[
+  {
+    "step": "journal_validation",
+    "command": "C:\\Users\\Syed Farooq\\AppData\\Local\\Programs\\Python\\Python311\\python.exe scripts/run_journal_validation.py --quick",
+    "return_code": 0,
+    "elapsed_seconds": 41.296,
+    "stdout": "Wrote journal validation outputs to reports\\journal_validation\n",
+    "stderr": "",
+    "ok": true
+  },
+  {
+    "step": "spatial_interpolation_loso",
+    "command": "C:\\Users\\Syed Farooq\\AppData\\Local\\Programs\\Python\\Python311\\python.exe scripts/validate_spatial_interpolation.py",
+    "return_code": 0,
+    "elapsed_seconds": 2.937,
+    "stdout": "Wrote interpolation LOSO outputs to reports\\street_level\nBest: power=1.000, blend=1.000, rmse=0.8572\n",
+    "stderr": "",
+    "ok": true
+  },
+  {
+    "step": "street_downscaler_supervised",
+    "command": "C:\\Users\\Syed Farooq\\AppData\\Local\\Programs\\Python\\Python311\\python.exe scripts/train_street_downscaler.py --use-station-proxy-labels",
+    "return_code": 4294967295,
+    "elapsed_seconds": 2388.968,
+    "stdout": "",
+    "stderr": "",
+    "ok": false
+  }
+]

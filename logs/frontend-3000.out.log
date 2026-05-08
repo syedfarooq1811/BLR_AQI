@@ -1,0 +1,13 @@
+
+> blr-aqi-frontend@0.1.0 dev
+> next dev
+
+   ▲ Next.js 14.0.0
+   - Local:        http://localhost:3001
+
+ ✓ Ready in 2.8s
+ ○ Compiling /page ...
+ ✓ Compiled /page in 1520ms (404 modules)
+ ✓ Compiled in 813ms (205 modules)
+ ✓ Compiled /page in 139ms (199 modules)
+[?25h

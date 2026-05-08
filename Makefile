@@ -1,4 +1,4 @@
-.PHONY: setup etl train test run-api dev docker-up
+.PHONY: setup etl train validate-journal validate-street train-street-downscaler paper-eval test run-api dev docker-up
 
 setup:
 	pip install poetry
@@ -12,6 +12,18 @@ etl:
 
 train:
 	poetry run python src/models/train.py
+
+validate-journal:
+	poetry run python scripts/run_journal_validation.py
+
+validate-street:
+	poetry run python scripts/validate_spatial_interpolation.py
+
+train-street-downscaler:
+	poetry run python scripts/train_street_downscaler.py
+
+paper-eval:
+	poetry run python scripts/run_paper_experiments.py
 
 test:
 	poetry run pytest tests/

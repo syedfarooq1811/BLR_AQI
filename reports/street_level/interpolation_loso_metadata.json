@@ -1,0 +1,16 @@
+{
+  "target_column": "AQI",
+  "target_units": "normalized AQI units from data/processed/features.parquet",
+  "rows": 16275,
+  "stations": 12,
+  "best": {
+    "idw_power": 1.0,
+    "idw_blend": 1.0,
+    "n": 195300.0,
+    "mae": 0.6573617295635242,
+    "rmse": 0.8571530692683128,
+    "r2": 0.20977201950547206,
+    "bias": -0.004560717619115349
+  },
+  "elapsed_seconds": 0.895
+}

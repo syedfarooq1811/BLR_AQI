@@ -1,0 +1,154 @@
+{
+  "best_temporal": {
+    "n": 40838,
+    "mae": 0.1715307806357474,
+    "rmse": 0.2820720156890453,
+    "r2": 0.9233504902550428,
+    "picp_90": 0.903423282237132,
+    "mean_interval_width_90": 0.8062445027071309,
+    "crps_gaussian": 0.1411241106847641,
+    "model": "HistGradientBoosting",
+    "feature_set": "full"
+  },
+  "best_loso_model": {
+    "model": "HistGradientBoosting",
+    "feature_set": "full",
+    "rmse": 0.3332687132718771,
+    "r2": 0.8879953026338635,
+    "mae": 0.2113252606223477
+  },
+  "ablation_ranked": [
+    {
+      "model": "HistGradientBoosting",
+      "feature_set": "full",
+      "rmse": 0.2820720156890453,
+      "r2": 0.9233504902550428,
+      "mae": 0.1715307806357474
+    },
+    {
+      "model": "HistGradientBoosting",
+      "feature_set": "no_spatial",
+      "rmse": 0.2823258244130835,
+      "r2": 0.9232124895623746,
+      "mae": 0.171655321972197
+    },
+    {
+      "model": "HistGradientBoosting",
+      "feature_set": "aqi_lag_only",
+      "rmse": 0.2833668729248363,
+      "r2": 0.9226451528111868,
+      "mae": 0.1715296112552859
+    },
+    {
+      "model": "HistGradientBoosting",
+      "feature_set": "no_temporal",
+      "rmse": 0.2837203348000234,
+      "r2": 0.9224520530195428,
+      "mae": 0.1710660218245531
+    },
+    {
+      "model": "Persistence",
+      "feature_set": "AQI_lag_1h",
+      "rmse": 0.2956320080951947,
+      "r2": 0.9158038401245652,
+      "mae": 0.1387857522198306
+    }
+  ],
+  "best_interpolation": {
+    "idw_power": 1.0,
+    "idw_blend": 1.0,
+    "n": 195300.0,
+    "mae": 0.6573617295635242,
+    "rmse": 0.8571530692683128,
+    "r2": 0.209772019505472,
+    "bias": -0.0045607176191153
+  },
+  "downscaler": {
+    "target_col": "AQI",
+    "features_path": "data\\processed\\features.parquet",
+    "labels_path": "data\\raw\\street_labels.parquet",
+    "canonical_scale": "IN_CPCB",
+    "label_mode": "station_proxy",
+    "results": [
+      {
+        "horizon_hours": 24,
+        "rows": 60000,
+        "splits": {
+          "train": 42000,
+          "val": 9000,
+          "test": 9000
+        },
+        "best_params": {
+          "learning_rate": 0.03,
+          "max_depth": 4,
+          "l2_regularization": 0.0,
+          "max_leaf_nodes": 31,
+          "min_samples_leaf": 20,
+          "loss": "squared_error"
+        },
+        "train": {
+          "n": 42000,
+          "mae": 0.4904748038697278,
+          "rmse": 0.7005114614928422,
+          "r2": 0.5360819776864856,
+          "bias": -0.0030108436673834628
+        },
+        "val": {
+          "n": 9000,
+          "mae": 0.4250512602664828,
+          "rmse": 0.6522385924705867,
+          "r2": 0.42619233965569037,
+          "bias": 0.03838098741462391
+        },
+        "test": {
+          "n": 9000,
+          "mae": 0.39554565946579945,
+          "rmse": 0.6082848699832979,
+          "r2": 0.4480038579636376,
+          "bias": 0.06269001915303518
+        },
+        "model_path": "models\\street_downscaler\\street_downscaler_h24.joblib"
+      },
+      {
+        "horizon_hours": 168,
+        "rows": 60000,
+        "splits": {
+          "train": 42000,
+          "val": 9000,
+          "test": 9000
+        },
+        "best_params": {
+          "learning_rate": 0.03,
+          "max_depth": 6,
+          "l2_regularization": 0.1,
+          "max_leaf_nodes": 31,
+          "min_samples_leaf": 20,
+          "loss": "squared_error"
+        },
+        "train": {
+          "n": 42000,
+          "mae": 0.5854685277350732,
+          "rmse": 0.7894183453014391,
+          "r2": 0.40440406842726884,
+          "bias": 0.00014639880189603867
+        },
+        "val": {
+          "n": 9000,
+          "mae": 0.5993810632465335,
+          "rmse": 0.8152892497229709,
+          "r2": 0.1541399802554314,
+          "bias": 0.09224614384085641
+        },
+        "test": {
+          "n": 9000,
+          "mae": 0.5419553705425172,
+          "rmse": 0.7425273558041702,
+          "r2": 0.14127554258932118,
+          "bias": 0.16431130476134664
+        },
+        "model_path": "models\\street_downscaler\\street_downscaler_h168.joblib"
+      }
+    ]
+  },
+  "total_elapsed_seconds": 2433.51
+}

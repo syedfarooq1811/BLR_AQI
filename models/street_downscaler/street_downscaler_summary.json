@@ -1,0 +1,97 @@
+{
+  "target_col": "AQI",
+  "features_path": "data\\processed\\features.parquet",
+  "labels_path": "data\\raw\\street_labels.parquet",
+  "canonical_scale": "IN_CPCB",
+  "label_mode": "station_proxy",
+  "paper_method": {
+    "name": "STARLING-AQI",
+    "full_name": "Spatial-Temporal Adaptive Residual Learning with Interpolation-Guided Stacking",
+    "claim_scope": "Novel as an implemented combination in this project: interpolation-prior features, station/site residual encoding, cyclic temporal context, heterogeneous regressors, and Ridge meta-learning under horizon-specific validation.",
+    "components": [
+      "IDW plus Delaunay-linear interpolation prior",
+      "station distribution features at the forecast horizon",
+      "cyclic hour/day temporal encodings",
+      "site residual proxy via station_code when proxy labels are used",
+      "heterogeneous base learners: HistGradientBoosting, ExtraTrees, RandomForest, GradientBoosting, KNN, MLP",
+      "RidgeCV meta learner with passthrough features"
+    ],
+    "paper_ready_warning": "Do not claim the numerical targets on street-level AQI unless evaluated on real street labels or an explicitly justified external validation set. Station-proxy labels are useful for pipeline development, not final street-level evidence."
+  },
+  "target_gates": {
+    "r2": 0.94,
+    "rmse": 0.15
+  },
+  "results": [
+    {
+      "horizon_hours": 24,
+      "rows": 3000,
+      "splits": {
+        "train": 2100,
+        "val": 450,
+        "test": 450
+      },
+      "best_params": {
+        "model_name": "hgb_strong"
+      },
+      "paper_model_name": "STARLING-AQI",
+      "train": {
+        "n": 2100,
+        "mae": 0.3624955202571823,
+        "rmse": 0.5062983914519488,
+        "r2": 0.7530016242616797,
+        "bias": 0.0008703887926472577
+      },
+      "val": {
+        "n": 450,
+        "mae": 0.4387478845218406,
+        "rmse": 0.6339087262904056,
+        "r2": 0.4934062946600283,
+        "bias": 0.0725224890595108
+      },
+      "test": {
+        "n": 450,
+        "mae": 0.4087563924569055,
+        "rmse": 0.5747851006225273,
+        "r2": 0.5385337157087602,
+        "bias": 0.002129472936233346
+      },
+      "model_path": "models\\street_downscaler\\street_downscaler_h24.joblib"
+    },
+    {
+      "horizon_hours": 168,
+      "rows": 3000,
+      "splits": {
+        "train": 2100,
+        "val": 450,
+        "test": 450
+      },
+      "best_params": {
+        "model_name": "random_forest_strong"
+      },
+      "paper_model_name": "STARLING-AQI",
+      "train": {
+        "n": 2100,
+        "mae": 0.3041370469419111,
+        "rmse": 0.4386727314389157,
+        "r2": 0.8192988525144587,
+        "bias": 0.0015311246961226806
+      },
+      "val": {
+        "n": 450,
+        "mae": 0.45404357227380004,
+        "rmse": 0.6045963572403935,
+        "r2": 0.3561522649186617,
+        "bias": 0.0343055142824319
+      },
+      "test": {
+        "n": 450,
+        "mae": 0.502577742670088,
+        "rmse": 0.717934550840879,
+        "r2": 0.3220763192565175,
+        "bias": 0.028207017308590723
+      },
+      "model_path": "models\\street_downscaler\\street_downscaler_h168.joblib"
+    }
+  ]
+}

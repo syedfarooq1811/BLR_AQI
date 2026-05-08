@@ -18,7 +18,6 @@ from pathlib import Path
 from datetime import timedelta
 
 from src.models.st_mhgtd import ST_MHGTD
-from src.models.super_res import SpatialUNet
 
 
 # -----------------------------------------------------------------
@@ -32,6 +31,10 @@ MODEL_PATH    = "data/models/best_st_mhgtd.pt"
 FEATURES_PATH = "data/processed/features.parquet"
 GRID_PATH     = "data/processed/aqi_grid.npy"
 OUT_DIR       = Path("data/processed")
+FORECAST_GRID_OUT_PATH = OUT_DIR / "forecast_grid_7day_filtered.npy"
+INTERPOLATION_METADATA_PATH = Path("reports/street_level/interpolation_loso_metadata.json")
+EXCLUDED_STATION_IDS = {"site_1558"}
+DEFAULT_MODEL_INPUT_DIM = 15
 
 # Bengaluru major CPCB stations
 STATION_NAMES = {
@@ -46,7 +49,6 @@ STATION_NAMES = {
     "site_5678": "City Railway Station",
     "site_166":  "Saneguruva Halli",
     "site_5686": "T Dasarahalli",
-    "site_1558": "Yeshwanthpur",
 }
 
 AQI_CATEGORIES = [
@@ -65,6 +67,19 @@ def categorize_aqi(val):
     return "Severe", "#7e0023"
 
 
+def model_input_dim() -> int:
+    if not Path(MODEL_PATH).exists():
+        return DEFAULT_MODEL_INPUT_DIM
+    try:
+        state = torch.load(MODEL_PATH, map_location="cpu")
+        weight = state.get("tcn.0.conv.weight")
+        if weight is not None and len(weight.shape) >= 2:
+            return int(weight.shape[1])
+    except Exception:
+        pass
+    return DEFAULT_MODEL_INPUT_DIM
+
+
 # -----------------------------------------------------------------
 # STEP 1: Load latest SEQ_LEN hours of features
 # -----------------------------------------------------------------
@@ -73,11 +88,19 @@ def load_input_sequence():
     df = pd.read_parquet(FEATURES_PATH)
     df = df.sort_values('timestamp')
 
-    feature_cols = [c for c in df.columns if 'lag' in c or 'rolling' in c
-                    or c in ['hour_sin', 'hour_cos', 'day_sin', 'day_cos',
-                             'month_sin', 'month_cos', 'is_weekend']]
+    preferred_cols = [
+        "PM2.5", "PM10", "NO2", "SO2", "CO", "O3", "AQI",
+        "hour_sin", "hour_cos", "day_sin", "day_cos", "month_sin", "month_cos",
+        "is_weekend", "AQI_lag_1h", "AQI_lag_3h", "AQI_lag_6h", "AQI_lag_24h",
+        "AQI_rolling_mean_6h", "AQI_rolling_std_6h", "AQI_rolling_mean_12h",
+        "AQI_rolling_std_12h", "AQI_rolling_mean_24h", "AQI_rolling_std_24h",
+    ]
+    feature_cols = [col for col in preferred_cols if col in df.columns][:model_input_dim()]
 
-    all_stations = sorted(df['station_id'].unique())
+    all_stations = [
+        sid for sid in sorted(df['station_id'].unique())
+        if sid not in EXCLUDED_STATION_IDS
+    ]
     station_sequences = {}
     for sid in all_stations:
         sdf = df[df['station_id'] == sid].tail(SEQ_LEN)
@@ -129,34 +152,83 @@ def forecast_stations(x_tensor, in_dim):
     return station_forecast, adj_matrix
 
 
-# -----------------------------------------------------------------
-# STEP 3: Project to spatial grid via SpatialUNet
-# -----------------------------------------------------------------
-def project_to_grid(station_forecast, grid_shape):
-    print("[3/4] Projecting station forecasts to spatial grid via SpatialUNet...")
+from scipy.interpolate import griddata
+from src.models.spatial_interpolation import grid_idw_weights
+
+STATION_COORDS = {
+    "site_1553": [12.9279, 77.6271],
+    "site_162": [12.9174, 77.6235],
+    "site_165": [12.9166, 77.6101],
+    "site_1554": [13.0450, 77.5966],
+    "site_1555": [12.9250, 77.5938],
+    "site_5729": [13.0289, 77.5199],
+    "site_5681": [12.9634, 77.5559],
+    "site_163": [12.9609, 77.5996],
+    "site_5678": [12.9774, 77.5713],
+    "site_166": [13.0068, 77.5090],
+    "site_5686": [13.0450, 77.5116],
+}
+
+def project_to_grid(station_forecast, grid_shape, station_ids):
+    print("[3/4] Projecting station forecasts to spatial grid with station-anchored interpolation...")
     H, W = grid_shape
-    super_res_model = SpatialUNet(in_channels=1, out_channels=1)
-    super_res_model.eval()
+    idw_power, idw_blend = load_interpolation_settings()
+    
+    try:
+        grid_lat = np.load(OUT_DIR / "grid_lat.npy")
+        grid_lon = np.load(OUT_DIR / "grid_lon.npy")
+    except Exception as e:
+        print(f"Warning: Could not load lat/lon grids ({e}). Falling back to flat mean.")
+        grid_lat, grid_lon = None, None
 
     spatial_grids = []
+    
+    if grid_lat is not None and grid_lon is not None:
+        points = np.array([STATION_COORDS[sid] for sid in station_ids])
+        idw_weights = grid_idw_weights(points, grid_lat, grid_lon, power=idw_power)
+        
     for h in range(HORIZON):
-        avg_aqi = station_forecast[:, h].mean()
-        base = np.full((H, W), avg_aqi / 500.0, dtype=np.float32)
-        x_grid = torch.tensor(base).unsqueeze(0).unsqueeze(0)  # (1,1,H,W)
-        with torch.no_grad():
-            out = super_res_model(x_grid)
-        grid_aqi = np.clip(out.squeeze().numpy() * 500.0, 0, 500)
+        values = station_forecast[:len(station_ids), h]
+        avg_aqi = values.mean()
+        
+        if grid_lat is not None and grid_lon is not None:
+            grid_z = griddata(points, values, (grid_lat, grid_lon), method='linear')
+            grid_z_nearest = griddata(points, values, (grid_lat, grid_lon), method='nearest')
+            linear_grid = np.where(np.isnan(grid_z), grid_z_nearest, grid_z)
+            linear_grid = np.nan_to_num(linear_grid, nan=avg_aqi)
+            idw_grid = np.tensordot(idw_weights, values, axes=([2], [0]))
+            # Blend the smoother linear surface with station-anchored IDW. This is
+            # deterministic and avoids adding structure from an untrained U-Net.
+            base = (1.0 - idw_blend) * linear_grid + idw_blend * idw_grid
+        else:
+            base = np.full((H, W), avg_aqi, dtype=np.float32)
+
+        grid_aqi = np.clip(base, 0, 500).astype(np.float32)
         spatial_grids.append(grid_aqi)
 
     stacked = np.stack(spatial_grids, axis=0)  # (168, H, W)
     print(f"  Spatial grid shape: {stacked.shape}")
-    return stacked
+    return stacked, idw_power, idw_blend
+
+
+def load_interpolation_settings():
+    default_power = 1.0
+    default_blend = 1.0
+    if not INTERPOLATION_METADATA_PATH.exists():
+        return default_power, default_blend
+    try:
+        metadata = json.loads(INTERPOLATION_METADATA_PATH.read_text(encoding="utf-8"))
+        best = metadata.get("best", {})
+        return float(best.get("idw_power", default_power)), float(best.get("idw_blend", default_blend))
+    except Exception as exc:
+        print(f"  Warning: could not load interpolation settings ({exc}); using defaults.")
+        return default_power, default_blend
 
 
 # -----------------------------------------------------------------
 # STEP 4: Save all outputs
 # -----------------------------------------------------------------
-def save_outputs(station_forecast, spatial_grids, station_ids, last_ts, adj_matrix):
+def save_outputs(station_forecast, spatial_grids, station_ids, last_ts, adj_matrix, idw_power, idw_blend):
     print("[4/4] Saving outputs...")
     OUT_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -228,9 +300,8 @@ def save_outputs(station_forecast, spatial_grids, station_ids, last_ts, adj_matr
         json.dump(adj_list, f, indent=2)
     print(f"  Attention weights saved -> {adj_path} ({len(adj_list)} cross-station edges)")
 
-    grid_path = OUT_DIR / "forecast_grid_7day.npy"
-    np.save(grid_path, spatial_grids)
-    print(f"  Spatial grid saved     -> {grid_path}")
+    np.save(FORECAST_GRID_OUT_PATH, spatial_grids)
+    print(f"  Spatial grid saved     -> {FORECAST_GRID_OUT_PATH}")
 
     # Summary table
     sep = "=" * 75
@@ -245,7 +316,7 @@ def save_outputs(station_forecast, spatial_grids, station_ids, last_ts, adj_matr
         print(f"  {name:<35} {days[0]:>7} {days[1]:>7} {days[2]:>7} {days[3]:>7} {days[6]:>7}")
     print(sep)
     print(f"\n  Grid: {spatial_grids.shape}  (168 hours x H x W)")
-    print(f"  RMSE: Station < 0.15  |  Street-level < 0.15 (SpatialUNet Global Residual)\n")
+    print(f"  Street interpolation: IDW power={idw_power:.2f}, IDW blend={idw_blend:.2f}\n")
 
 
 # -----------------------------------------------------------------
@@ -267,5 +338,5 @@ if __name__ == "__main__":
     else:
         grid_shape = (241, 248)  # Grid shape from grid_builder output
 
-    spatial_grids = project_to_grid(station_forecast, grid_shape)
-    save_outputs(station_forecast, spatial_grids, station_ids, last_ts, adj_matrix)
+    spatial_grids, idw_power, idw_blend = project_to_grid(station_forecast, grid_shape, station_ids)
+    save_outputs(station_forecast, spatial_grids, station_ids, last_ts, adj_matrix, idw_power, idw_blend)
